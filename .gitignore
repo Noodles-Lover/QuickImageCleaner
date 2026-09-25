@@ -1,0 +1,16 @@
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Local artifacts
+node_modules/
+*.log
+
+# Local design notes, not part of the deliverable
+设计方案.md

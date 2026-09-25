@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>QuickImageCleaner · 核心算法验收测试</title>
+<style>
+:root{
+  --bg:#0c0c0b; --panel:#161614; --line:#2a2a26; --line-2:#35352f;
+  --ink:#ece6d9; --ink-2:#9a9385; --ink-3:#6a6458;
+  --amber:#f2a93b; --teal:#79d3c0; --red:#e0653f;
+  --font-ui:"Bahnschrift","DIN Alternate","Oswald","PingFang SC","Microsoft YaHei",sans-serif;
+  --font-mono:"Cascadia Mono","JetBrains Mono","IBM Plex Mono","Consolas",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:34px 26px 60px; background:var(--bg); color:var(--ink);
+  font-family:var(--font-ui); font-size:13px;
+}
+.wrap{max-width:880px; margin:0 auto}
+h1{margin:0 0 4px; font-size:17px; letter-spacing:.12em; font-weight:600}
+h1 em{font-style:normal; color:var(--amber)}
+.sub{margin:0 0 26px; font-family:var(--font-mono); font-size:11px; color:var(--ink-3); letter-spacing:.1em}
+.summary{
+  display:flex; gap:22px; padding:12px 16px; margin-bottom:20px;
+  border:1px solid var(--line-2); background:var(--panel);
+  font-family:var(--font-mono); font-size:12px;
+}
+.summary b{color:var(--teal); font-weight:600}
+.summary .fail{color:var(--red)}
+.item{
+  border:1px solid var(--line); border-left:2px solid var(--line-2);
+  padding:11px 15px; margin-bottom:8px; background:var(--panel);
+}
+.item.pass{border-left-color:var(--teal)}
+.item.fail{border-left-color:var(--red)}
+.item-head{display:flex; align-items:baseline; gap:10px}
+.item-name{font-size:13px; letter-spacing:.03em}
+.item-badge{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.12em;
+  padding:2px 7px; border:1px solid currentColor;
+}
+.pass .item-badge{color:var(--teal)}
+.fail .item-badge{color:var(--red)}
+.item-detail{
+  margin-top:6px; font-family:var(--font-mono); font-size:11px; color:var(--ink-2);
+  line-height:1.65; white-space:pre-wrap; word-break:break-all;
+}
+.fail .item-detail{color:var(--red)}
+.note{
+  margin-top:24px; padding:12px 16px; border:1px solid var(--line);
+  font-size:12px; color:var(--ink-2); line-height:1.7;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGCore · <em>验收测试</em></h1>
+  <p class="sub">设计方案.md §8 · 合成图断言</p>
+  <div class="summary" id="summary">运行中…</div>
+  <div id="list"></div>
+  <div class="note">
+    说明：用例 2 的第二段（主体贴左上角 + margin=20）按 §4.6 公式应为 {0,0,50,50}，
+    只有在「主体铺满整张 30×30 图」时才等于 {0,0,30,30}。这里按后者构造，并在下方标注差异。
+  </div>
+</div>
+
+<script src="bg-core.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var results = [];
+
+  function assert(cond, msg) { if (!cond) throw new Error(msg); }
+  function eq(actual, expected, label) {
+    if (actual !== expected) {
+      throw new Error(label + ' 期望 ' + expected + '，实际 ' + actual);
+    }
+  }
+  function boundsEq(b, e, label) {
+    if (!b) throw new Error(label + ' bounds 为 null');
+    var got = '{' + [b.x, b.y, b.w, b.h].join(',') + '}';
+    var want = '{' + [e.x, e.y, e.w, e.h].join(',') + '}';
+    if (got !== want) throw new Error(label + ' 期望 ' + want + '，实际 ' + got);
+  }
+  function test(name, fn) {
+    var t0 = performance.now();
+    try {
+      var detail = fn() || '';
+      results.push({ name: name, ok: true, detail: detail, ms: performance.now() - t0 });
+    } catch (e) {
+      results.push({ name: name, ok: false, detail: e.message, ms: performance.now() - t0 });
+    }
+  }
+
+  /* ---------------- 合成图工具 ---------------- */
+
+  function buffer(w, h, rgba) {
+    var d = new Uint8ClampedArray(w * h * 4);
+    var c = rgba || [255, 255, 255, 255];
+    for (var i = 0; i < w * h; i++) {
+      d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2];
+      d[i * 4 + 3] = c.length > 3 ? c[3] : 255;
+    }
+    return { data: d, width: w, height: h };
+  }
+  function rect(buf, x0, y0, x1, y1, rgb) {
+    for (var y = y0; y <= y1; y++) {
+      for (var x = x0; x <= x1; x++) {
+        var i = (y * buf.width + x) * 4;
+        buf.data[i] = rgb[0]; buf.data[i + 1] = rgb[1]; buf.data[i + 2] = rgb[2];
+      }
+    }
+  }
+  function px(buf, x, y, rgb) { rect(buf, x, y, x, y, rgb); }
+  function alphaAt(buf, x, y) { return buf.data[(y * buf.width + x) * 4 + 3]; }
+  function alphaAtRes(res, x, y) { return res.data[(y * res.width + x) * 4 + 3]; }
+  var RED = [220, 40, 40];
+  var WHITE = [255, 255, 255];
+  // 固定种子的伪随机，保证可复现
+  var seed = 20240917;
+  function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+  /* ================================================================= *
+   * 用例
+   * ================================================================= */
+
+  // 1. 100×80 纯白底 + 30..49 / 20..49 红色矩形
+  test('1. 基础包围盒：bounds = {30,20,20,30}', function () {
+    var src = buffer(100, 80, WHITE);
+    rect(src, 30, 20, 49, 49, RED);
+    var r = BGCore.process(src);
+    boundsEq(r.bounds, { x: 30, y: 20, w: 20, h: 30 }, 'bounds');
+    return 'bg=' + (r.bgColor ? r.bgColor.join(',') : 'null') +
+           ' removed=' + r.removed + ' empty=' + r.empty;
+  });
+
+  // 2a. margin=5
+  test('2a. margin=5：bounds = {25,15,30,40}', function () {
+    var src = buffer(100, 80, WHITE);
+    rect(src, 30, 20, 49, 49, RED);
+    var r = BGCore.process(src, { margin: 5 });
+    boundsEq(r.bounds, { x: 25, y: 15, w: 30, h: 40 }, 'bounds');
+    return 'cropped 长度 = ' + r.cropped.length + '（期望 ' + 30 * 40 * 4 + '）';
+  });
+
+  // 2b. 主体铺满 30×30 整图 + margin=20（贴边钳制）
+  test('2b. 主体贴边 + margin=20：bounds = {0,0,30,30}', function () {
+    var src = buffer(30, 30, WHITE);
+    rect(src, 0, 0, 29, 29, RED);   // 主体铺满整图 → 四边均被钳制
+    var r = BGCore.process(src, { margin: 20 });
+    boundsEq(r.bounds, { x: 0, y: 0, w: 30, h: 30 }, 'bounds');
+    return '注：方案 §8 写的 {0,0,30,30} 仅在主体铺满整图时成立；' +
+           '若主体为左上角 30×30 而图为更大尺寸，§4.6 公式给出 {0,0,50,50}';
+  });
+
+  // 2c. §4.6 公式交叉验证：100×80 图 + 左上角 30×30 主体 + margin=20
+  test('2c. 公式交叉验证：左上角 30×30 主体 + margin=20 → {0,0,50,50}', function () {
+    var src = buffer(100, 80, WHITE);
+    rect(src, 0, 0, 29, 29, RED);
+    var r = BGCore.process(src, { margin: 20 });
+    boundsEq(r.bounds, { x: 0, y: 0, w: 50, h: 50 }, 'bounds');
+    return '方案 §8 原文写的 {0,0,30,30} 与 §4.6 公式矛盾；这里以公式为准';
+  });
+
+  // 3. 主体内部同色像素：edge 保留 / global 打穿
+  test('3. 连通性：主体内白点 edge=255 / global=0', function () {
+    function build() {
+      var s = buffer(100, 80, WHITE);
+      rect(s, 30, 20, 49, 49, RED);
+      px(s, 40, 35, WHITE);
+      return s;
+    }
+    var e = BGCore.process(build(), { connectivity: 'edge' });
+    var g = BGCore.process(build(), { connectivity: 'global' });
+    eq(alphaAtRes(e, 40, 35), 255, 'edge alpha');
+    eq(alphaAtRes(g, 40, 35), 0, 'global alpha');
+    return 'edge=255, global=0 ✓（主体未被打穿 / 全图同色被移除）';
+  });
+
+  // 4. 线性混合带：alpha 单调不减 + 存在中间值
+  test('4. 羽化过渡：alpha 单调不减且存在 0<a<255', function () {
+    var w = 200, h = 3;
+    var src = { data: new Uint8ClampedArray(w * h * 4), width: w, height: h };
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var t = x / (w - 1);
+        var i = (y * w + x) * 4;
+        src.data[i] = 255;
+        src.data[i + 1] = Math.round(255 * (1 - t));
+        src.data[i + 2] = Math.round(255 * (1 - t));
+        src.data[i + 3] = 255;
+      }
+    }
+    // 显式指定背景色：本用例只验证 alpha 映射。若走自动检测，渐变铺满上下边框
+    // 会把中位数拉到渐变中点，背景色会被估成 (255,127,127)。
+    var r = BGCore.process(src, { connectivity: 'global', bgColor: [255, 255, 255] });
+    var mid = 0, prev = -1;
+    for (var xx = 0; xx < w; xx++) {
+      var a = alphaAtRes(r, xx, 1);
+      if (a >= prev) prev = a;
+      else throw new Error('x=' + xx + ' 处 alpha 下降：' + prev + ' → ' + a);
+      if (a > 0 && a < 255) mid++;
+    }
+    assert(mid > 0, '未出现半透明像素（羽化无效）');
+    return '单调不减 ✓，半透明像素 ' + mid + ' 个';
+  });
+
+  // 5. 背景 ±6 噪点
+  test('5. 抗噪：包围盒精确、主体无空洞、背景 alpha=0', function () {
+    var w = 200, h = 150;
+    var src = buffer(w, h, WHITE);
+    seed = 20240917;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        src.data[i] = clamp255(255 - Math.round((rnd() * 2 - 1) * 6));
+        src.data[i + 1] = clamp255(255 - Math.round((rnd() * 2 - 1) * 6));
+        src.data[i + 2] = clamp255(255 - Math.round((rnd() * 2 - 1) * 6));
+      }
+    }
+    rect(src, 40, 40, 139, 109, RED);
+    var r = BGCore.process(src);
+    boundsEq(r.bounds, { x: 40, y: 40, w: 100, h: 70 }, 'bounds');
+
+    var bgBad = 0, hole = 0;
+    for (var yy = 0; yy < h; yy++) {
+      for (var xx = 0; xx < w; xx++) {
+        var a = alphaAtRes(r, xx, yy);
+        var inside = xx >= 40 && xx <= 139 && yy >= 40 && yy <= 109;
+        if (!inside && a !== 0) bgBad++;
+        if (inside && a !== 255) hole++;
+      }
+    }
+    eq(bgBad, 0, '背景未清干净的像素数');
+    eq(hole, 0, '主体内部空洞数');
+    return '背景残留 ' + bgBad + '，主体空洞 ' + hole;
+  });
+  function clamp255(v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
+
+  // 6. 全白图
+  test('6. 整图判为背景：empty=true / bounds=全图 / cropped=全图', function () {
+    var src = buffer(50, 50, WHITE);
+    var r = BGCore.process(src);
+    eq(r.empty, true, 'empty');
+    boundsEq(r.bounds, { x: 0, y: 0, w: 50, h: 50 }, 'bounds');
+    eq(r.cropped.length, 50 * 50 * 4, 'cropped 长度');
+    return 'empty=true, cropped=' + r.cropped.length + ' 字节';
+  });
+
+  // 7. 主体左右贴边
+  test('7. 主体左右贴边：bounds.w = 原宽', function () {
+    var src = buffer(100, 80, WHITE);
+    rect(src, 0, 20, 99, 49, RED);
+    var r = BGCore.process(src);
+    eq(r.bounds.w, 100, 'bounds.w');
+    boundsEq(r.bounds, { x: 0, y: 20, w: 100, h: 30 }, 'bounds');
+    return 'bounds.w = 100 ✓';
+  });
+
+  // 8. 性能：300 万像素
+  test('8. 性能：2000×1500 处理 < 500ms', function () {
+    var w = 2000, h = 1500;
+    var src = buffer(w, h, WHITE);
+    rect(src, 300, 250, 1699, 1249, RED);
+    var t0 = performance.now();
+    var r = BGCore.process(src);
+    var ms = performance.now() - t0;
+    assert(ms < 500, '耗时 ' + ms.toFixed(1) + 'ms 超过 500ms');
+    return ms.toFixed(1) + ' ms（' + (w * h / 1e6).toFixed(1) + ' 万… 实际 ' +
+           (w * h) + ' 像素），removed=' + r.removed;
+  });
+
+  /* ---------------- 附加：不变量 ---------------- */
+
+  test('A. 输入缓冲不被修改', function () {
+    var src = buffer(60, 40, WHITE);
+    rect(src, 15, 10, 44, 29, RED);
+    var before = new Uint8ClampedArray(src.data);
+    BGCore.process(src);
+    for (var i = 0; i < before.length; i++) {
+      if (before[i] !== src.data[i]) throw new Error('第 ' + i + ' 字节被就地修改');
+    }
+    return '逐字节比对一致 ✓';
+  });
+
+  test('B. 全透明输入：estimateBackground = null，原样返回', function () {
+    var src = buffer(40, 40, [0, 0, 0, 0]);
+    var bg = BGCore.estimateBackground(src.data, 40, 40, 2);
+    if (bg !== null) throw new Error('estimateBackground 应返回 null，实际 ' + bg);
+    var r = BGCore.process(src);
+    boundsEq(r.bounds, { x: 0, y: 0, w: 40, h: 40 }, 'bounds');
+    eq(r.removed, 0, 'removed');
+    return 'null ✓, bounds=全图, removed=0';
+  });
+
+  test('C. 指定色与图中任何像素都不匹配：不裁剪', function () {
+    var src = buffer(60, 40, WHITE);
+    rect(src, 15, 10, 44, 29, RED);
+    var r = BGCore.process(src, { bgColor: [0, 255, 0], tolerance: 5 });
+    boundsEq(r.bounds, { x: 0, y: 0, w: 60, h: 40 }, 'bounds');
+    eq(r.removed, 0, 'removed');
+    return 'bounds=全图, removed=0';
+  });
+
+  test('D. margin 超界钳制：margin=999 → bounds=全图', function () {
+    var src = buffer(100, 80, WHITE);
+    rect(src, 30, 20, 49, 49, RED);
+    var r = BGCore.process(src, { margin: 999 });
+    boundsEq(r.bounds, { x: 0, y: 0, w: 100, h: 80 }, 'bounds');
+    return '钳制到 [0, w-1] / [0, h-1] ✓';
+  });
+
+  test('E. softness=0（kIn===kT）：不触发除零，硬边', function () {
+    var src = buffer(100, 80, WHITE);
+    rect(src, 30, 20, 49, 49, RED);
+    var r = BGCore.process(src, { softness: 0 });
+    boundsEq(r.bounds, { x: 30, y: 20, w: 20, h: 30 }, 'bounds');
+    var a = alphaAtRes(r, 29, 30);
+    if (a !== 0) throw new Error('背景像素 alpha 应为 0，实际 ' + a);
+    return '无 NaN，背景 alpha=0，硬边 ✓';
+  });
+
+  test('F. tolerance=0：仅精确匹配被移除', function () {
+    var src = buffer(40, 40, WHITE);
+    px(src, 20, 20, [250, 250, 250]);
+    var r = BGCore.process(src, { tolerance: 0, softness: 0 });
+    // 整图除 (20,20) 外都被移除 → findBounds 命中 (20,20)
+    boundsEq(r.bounds, { x: 20, y: 20, w: 1, h: 1 }, 'bounds');
+    return '仅精确匹配保留 ✓';
+  });
+
+  test('G. colorDistance 归一化到 0..255', function () {
+    var d1 = BGCore.colorDistance(0, 0, 0, 255, 255, 255);
+    var d2 = BGCore.colorDistance(0, 0, 0, 0, 0, 0);
+    assert(Math.abs(d1 - 255) < 1e-6, '黑白距离应为 255，实际 ' + d1);
+    assert(d2 === 0, '同色距离应为 0');
+    return 'black↔white = ' + d1.toFixed(3) + ' ✓';
+  });
+
+  /* ---------------- 渲染 ---------------- */
+
+  var pass = results.filter(function (r) { return r.ok; }).length;
+  var fail = results.length - pass;
+
+  document.getElementById('summary').innerHTML =
+    '<span>用例 <b>' + results.length + '</b></span>' +
+    '<span>通过 <b>' + pass + '</b></span>' +
+    '<span>失败 <b class="' + (fail ? 'fail' : '') + '">' + fail + '</b></span>';
+
+  document.getElementById('list').innerHTML = results.map(function (r) {
+    return '<div class="item ' + (r.ok ? 'pass' : 'fail') + '">' +
+      '<div class="item-head">' +
+        '<span class="item-badge">' + (r.ok ? 'PASS' : 'FAIL') + '</span>' +
+        '<span class="item-name">' + escapeHtml(r.name) + '</span>' +
+        '<span style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">' +
+          r.ms.toFixed(1) + ' ms</span>' +
+      '</div>' +
+      '<div class="item-detail">' + escapeHtml(r.detail) + '</div>' +
+    '</div>';
+  }).join('');
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+})();
+</script>
+</body>
+</html>
