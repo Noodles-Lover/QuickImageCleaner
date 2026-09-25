@@ -25,7 +25,7 @@
 
   var DEFAULTS = {
     bgColor: null,
-    tolerance: 20,
+    tolerance: 10,
     softness: 0.3,
     connectivity: 'edge',
     crop: true,

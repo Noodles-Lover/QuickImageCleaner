@@ -123,7 +123,32 @@ body{
 .field-row{display:flex; align-items:center; justify-content:space-between; gap:8px}
 .field-label{font-size:12px; color:var(--ink); letter-spacing:.02em}
 .field-hint{font-size:10px; color:var(--ink-3); font-family:var(--font-mono); margin-top:4px; line-height:1.5}
-.field-val{font-family:var(--font-mono); font-size:11.5px; color:var(--accent); min-width:34px; text-align:right}
+/* 步进按钮：按住可连续增减 */
+.stepper{display:flex; align-items:center; gap:3px}
+.stp-btns{display:flex; flex-direction:column; gap:2px}
+.stp{
+  width:15px; height:11px; padding:0; flex:none;
+  border:1px solid var(--line-2); background:var(--panel-2); color:var(--ink-2);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .14s var(--ease),border-color .14s var(--ease),color .14s var(--ease);
+}
+.stp svg{width:8px; height:8px}
+.stp:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
+.stp:active{transform:translateY(.5px)}
+
+/* 数值框：可直接键入精确值 / 上下键微调，与滑块双向同步 */
+.field-val{
+  font-family:var(--font-mono); font-size:11.5px; color:var(--accent);
+  width:52px; flex:none; text-align:right;
+  background:transparent; border:0; border-bottom:1px dashed transparent;
+  padding:2px 1px; outline:none; border-radius:0;
+  -moz-appearance:textfield; appearance:textfield;
+}
+.field-val::-webkit-outer-spin-button,
+.field-val::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+.field-val:hover{border-bottom-color:var(--line-2)}
+.field-val:focus{border-bottom-color:var(--accent); background:var(--panel-2)}
+.field-val:disabled{opacity:.4}
 
 /* checkbox */
 .check{display:flex; align-items:center; gap:9px; cursor:pointer; user-select:none; padding:3px 0}
@@ -215,6 +240,55 @@ input[type=color]::-webkit-color-swatch{border:0}
   background-repeat:no-repeat; background-position:right 9px center;
 }
 
+/* segmented radio */
+.seg{display:flex; border:1px solid var(--line-2); background:var(--panel-2)}
+.seg label{flex:1; position:relative; cursor:pointer}
+.seg input{position:absolute; opacity:0; width:0; height:0}
+.seg span{
+  display:flex; align-items:center; justify-content:center;
+  padding:7px 4px; font-size:12px; color:var(--ink-2);
+  transition:background .16s var(--ease),color .16s var(--ease);
+}
+.seg input:checked + span{background:var(--accent-soft); color:var(--accent)}
+.seg input:focus-visible + span{outline:2px solid var(--teal); outline-offset:-2px}
+
+/* batch navigator */
+.batch-nav{position:absolute; inset:0; z-index:3; pointer-events:none}
+.bn-top{
+  position:absolute; top:10px; left:12px; right:12px;
+  display:flex; align-items:center; gap:8px; pointer-events:auto;
+}
+.bn-count{
+  font-family:var(--font-mono); font-size:11px; color:var(--accent);
+  background:var(--panel); border:1px solid var(--line-2); padding:4px 8px; flex:none;
+}
+.bn-name{
+  font-family:var(--font-mono); font-size:11px; color:var(--ink-2);
+  background:var(--panel); border:1px solid var(--line-2); padding:4px 8px;
+  flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.bn-top .btn{padding:4px 9px; font-size:11px; flex:none}
+.bn-arrow{
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:38px; height:38px; border:1px solid var(--line-2); background:var(--panel);
+  color:var(--ink); cursor:pointer; pointer-events:auto;
+  display:flex; align-items:center; justify-content:center; padding:0;
+  transition:background .16s var(--ease),border-color .16s var(--ease),color .16s var(--ease);
+}
+.bn-arrow svg{width:18px; height:18px}
+.bn-prev{left:12px}
+.bn-next{right:12px}
+.bn-arrow:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
+.bn-arrow:disabled{opacity:.35; cursor:not-allowed}
+
+/* batch progress */
+.bp-bar{height:3px; background:var(--panel-3); overflow:hidden}
+.bp-bar i{display:block; height:100%; background:var(--accent); width:0; transition:width .18s linear}
+.bp-text{
+  font-family:var(--font-mono); font-size:10.5px; color:var(--ink-2);
+  margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
 /* tips */
 .tips{margin:0; padding-left:15px; color:var(--ink-2); font-size:11.5px; line-height:1.75}
 .tips li{margin-bottom:3px}
@@ -247,8 +321,7 @@ input[type=color]::-webkit-color-swatch{border:0}
 
 .viewport{
   position:relative; min-height:0; min-width:0;
-  display:flex; align-items:center; justify-content:center;
-  padding:26px;
+  padding:20px;
   background-image:
     linear-gradient(var(--line) 1px,transparent 1px),
     linear-gradient(90deg,var(--line) 1px,transparent 1px);
@@ -257,19 +330,28 @@ input[type=color]::-webkit-color-swatch{border:0}
   transition:box-shadow .2s var(--ease);
 }
 .viewport::after{
-  content:""; position:absolute; inset:0; pointer-events:none;
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
   background:radial-gradient(120% 90% at 50% 42%,transparent 44%,rgba(72,64,50,.10) 100%);
 }
 .viewport.is-dragover{box-shadow:inset 0 0 0 2px var(--accent)}
 
+/* 画布滚动容器：放大后由此提供平移 */
+.canvas-area{
+  position:relative; z-index:1;
+  width:100%; height:100%;
+  display:flex; overflow:auto;
+}
+.canvas-area::-webkit-scrollbar{width:10px; height:10px}
+.canvas-area::-webkit-scrollbar-thumb{background:var(--line-2)}
+.canvas-area::-webkit-scrollbar-track{background:transparent}
+.canvas-area.can-pan{cursor:grab}
+.canvas-area.is-panning{cursor:grabbing}
 .canvas-shell{
-  position:relative; z-index:1; max-width:100%; max-height:100%; line-height:0;
+  margin:auto; line-height:0;
   box-shadow:0 18px 44px -18px rgba(70,60,44,.35), 0 0 0 1px var(--line-2);
 }
 #preview{
   display:block;
-  max-width:100%; max-height:calc(100vh - 58px - 48px - 46px - 56px);
-  width:auto; height:auto;
   background-color:#f7f4ec;
   background-image:
     linear-gradient(45deg,#e7e1d3 25%,transparent 25%,transparent 75%,#e7e1d3 75%),
@@ -279,14 +361,35 @@ input[type=color]::-webkit-color-swatch{border:0}
 }
 #preview.is-picking{cursor:crosshair}
 
-/* dropzone */
+/* 缩放控件 */
+.zoom-pill{
+  position:absolute; right:14px; bottom:12px; z-index:4;
+  display:flex; align-items:center; gap:1px;
+  background:var(--panel); border:1px solid var(--line-2); padding:2px;
+  box-shadow:0 6px 18px -8px rgba(70,60,44,.45);
+}
+.zoom-pill button{
+  font-family:var(--font-mono); font-size:11px; color:var(--ink);
+  background:transparent; border:0; padding:4px 8px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:3px;
+  transition:background .14s var(--ease),color .14s var(--ease);
+}
+.zoom-pill button:hover{background:var(--accent-soft); color:var(--accent)}
+.zoom-pill .zp-val{cursor:default}
+.zoom-pill .zp-val{min-width:44px; text-align:center; color:var(--accent)}
+.zoom-pill svg{width:11px; height:11px}
+.zoom-pill .zp-sep{width:1px; height:16px; background:var(--line); margin:0 2px}
+
+/* dropzone：绝对定位居中，不参与 canvas-area 的文档流 */
 .dropzone{
-  position:relative; z-index:2;
-  width:min(560px,100%); max-height:100%;
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  z-index:2;
+  width:min(560px, calc(100% - 40px));
+  max-height:calc(100% - 40px); overflow:auto;
   border:1px dashed var(--line-2);
   background:rgba(251,249,245,.72);
   display:flex; align-items:center; justify-content:center;
-  padding:50px 34px; cursor:pointer;
+  padding:46px 34px; cursor:pointer;
   transition:border-color .2s var(--ease),background .2s var(--ease);
 }
 .dropzone:hover{border-color:var(--accent); background:var(--accent-soft)}
@@ -318,6 +421,39 @@ input[type=color]::-webkit-color-swatch{border:0}
 .swatch{width:11px; height:11px; border:1px solid var(--line-2); background:transparent; display:inline-block}
 .empty-flag{font-family:var(--font-mono); font-size:10px; color:var(--red); border:1px solid var(--red); padding:2px 6px; letter-spacing:.08em}
 
+.btn--danger{background:var(--red); border-color:var(--red); color:#fff; font-weight:600}
+.btn--danger:hover{background:#9c1f18; border-color:#9c1f18}
+
+/* 确认对话框 */
+.modal-mask{
+  position:fixed; inset:0; z-index:10001;
+  background:rgba(40,34,26,.42);
+  display:flex; align-items:center; justify-content:center;
+  animation:fadeIn .16s var(--ease);
+}
+@keyframes fadeIn{from{opacity:0} to{opacity:1}}
+.modal{
+  width:min(430px,90vw); background:var(--panel); border:1px solid var(--line-2);
+  border-top:2px solid var(--red); padding:20px 22px 18px;
+  box-shadow:0 26px 60px -18px rgba(40,34,26,.55);
+  animation:rise .22s var(--ease);
+}
+.modal h2{margin:0 0 10px; font-size:14px; letter-spacing:.08em; color:var(--ink)}
+.modal #confirmText{margin:0 0 18px; font-size:12.5px; color:var(--ink-2); line-height:1.75}
+.modal #confirmText div{margin-bottom:5px}
+.modal-warn{
+  display:flex; align-items:flex-start; gap:8px;
+  margin-top:13px; padding:9px 12px;
+  background:rgba(179,38,30,.06);
+  border-left:2px solid var(--red);
+  color:var(--red); font-weight:700; font-size:12px; line-height:1.65;
+}
+.modal-warn::before{
+  content:""; flex:none; width:3px; height:3px; margin-top:7px;
+  border-radius:50%; background:var(--red);
+}
+.modal-actions{display:flex; justify-content:flex-end; gap:8px}
+
 /* toast */
 .toast{
   position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:10000;
@@ -336,6 +472,7 @@ input[type=color]::-webkit-color-swatch{border:0}
 .rail .group:nth-child(2){animation-delay:.17s}
 .rail .group:nth-child(3){animation-delay:.22s}
 .rail .group:nth-child(4){animation-delay:.27s}
+.rail .group:nth-child(5){animation-delay:.32s}
 .statusbar .stat:nth-child(1){animation-delay:.34s}
 .statusbar .stat:nth-child(2){animation-delay:.38s}
 .statusbar .stat:nth-child(3){animation-delay:.42s}
@@ -414,7 +551,17 @@ input[type=color]::-webkit-color-swatch{border:0}
       <div class="field">
         <div class="field-row">
           <span class="field-label">敏感度</span>
-          <span class="field-val" id="valTolerance">20</span>
+          <span class="stepper">
+            <input type="number" class="field-val" id="valTolerance" min="0" max="100" step="1" value="10" aria-label="敏感度数值">
+            <span class="stp-btns">
+              <button type="button" class="stp" data-step="valTolerance" data-dir="1" aria-label="增加敏感度">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 15l7-7 7 7"/></svg>
+              </button>
+              <button type="button" class="stp" data-step="valTolerance" data-dir="-1" aria-label="减少敏感度">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 9l7 7 7-7"/></svg>
+              </button>
+            </span>
+          </span>
         </div>
         <input type="range" class="slider" id="tolerance" min="0" max="100" step="1" value="20">
       </div>
@@ -422,7 +569,17 @@ input[type=color]::-webkit-color-swatch{border:0}
       <div class="field">
         <div class="field-row">
           <span class="field-label">边缘羽化</span>
-          <span class="field-val" id="valSoftness">30</span>
+          <span class="stepper">
+            <input type="number" class="field-val" id="valSoftness" min="0" max="100" step="1" value="30" aria-label="边缘羽化数值">
+            <span class="stp-btns">
+              <button type="button" class="stp" data-step="valSoftness" data-dir="1" aria-label="增加羽化">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 15l7-7 7 7"/></svg>
+              </button>
+              <button type="button" class="stp" data-step="valSoftness" data-dir="-1" aria-label="减少羽化">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 9l7 7 7-7"/></svg>
+              </button>
+            </span>
+          </span>
         </div>
         <input type="range" class="slider" id="softness" min="0" max="100" step="1" value="30">
         <div class="field-hint">占敏感度区间的比例，产生半透明过渡带</div>
@@ -453,7 +610,17 @@ input[type=color]::-webkit-color-swatch{border:0}
       <div class="field">
         <div class="field-row">
           <span class="field-label">外边距</span>
-          <span class="field-val" id="valMargin">0</span>
+          <span class="stepper">
+            <input type="number" class="field-val" id="valMargin" min="0" max="200" step="1" value="0" aria-label="外边距数值">
+            <span class="stp-btns">
+              <button type="button" class="stp" data-step="valMargin" data-dir="1" aria-label="增加外边距">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 15l7-7 7 7"/></svg>
+              </button>
+              <button type="button" class="stp" data-step="valMargin" data-dir="-1" aria-label="减少外边距">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 9l7 7 7-7"/></svg>
+              </button>
+            </span>
+          </span>
         </div>
         <input type="range" class="slider" id="margin" min="0" max="200" step="1" value="0">
       </div>
@@ -461,10 +628,51 @@ input[type=color]::-webkit-color-swatch{border:0}
       <div class="field">
         <div class="field-row">
           <span class="field-label">判定阈值</span>
-          <span class="field-val" id="valThreshold">8</span>
+          <span class="stepper">
+            <input type="number" class="field-val" id="valThreshold" min="0" max="255" step="1" value="8" aria-label="判定阈值数值">
+            <span class="stp-btns">
+              <button type="button" class="stp" data-step="valThreshold" data-dir="1" aria-label="增加判定阈值">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 15l7-7 7 7"/></svg>
+              </button>
+              <button type="button" class="stp" data-step="valThreshold" data-dir="-1" aria-label="减少判定阈值">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 9l7 7 7-7"/></svg>
+              </button>
+            </span>
+          </span>
         </div>
         <input type="range" class="slider" id="threshold" min="0" max="255" step="1" value="8">
         <div class="field-hint">alpha 高于该值的像素才计入包围盒</div>
+      </div>
+    </section>
+
+    <!-- 04 批量 -->
+    <section class="group">
+      <div class="group-head"><span class="group-idx">04</span><span class="group-name">批量</span></div>
+
+      <div class="field">
+        <button class="btn btn--block" id="btnPickDir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+            <path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h6l2 2"/>
+          </svg>选择文件夹
+        </button>
+        <div class="field-hint" id="batchDirInfo">仅处理文件夹第一层，忽略子文件夹与非图片</div>
+      </div>
+
+      <div class="field">
+        <div class="seg" id="batchMode">
+          <label><input type="radio" name="batchSave" value="copy" checked><span>创建副本</span></label>
+          <label><input type="radio" name="batchSave" value="overwrite"><span>原地覆盖</span></label>
+        </div>
+        <div class="field-hint" id="batchHint">原图另存为 原名-original，处理结果占用原文件名（原名.png）</div>
+      </div>
+
+      <div class="field">
+        <button class="btn btn--block btn--primary" id="btnBatchRun" disabled>开始处理</button>
+      </div>
+
+      <div class="field" id="batchProgress" hidden>
+        <div class="bp-bar"><i id="bpFill"></i></div>
+        <div class="bp-text" id="bpText"></div>
       </div>
     </section>
 
@@ -509,9 +717,43 @@ input[type=color]::-webkit-color-swatch{border:0}
     </div>
 
     <div class="viewport" id="viewport">
-      <div class="canvas-shell" id="canvasShell" hidden>
-        <canvas id="preview"></canvas>
+      <div class="canvas-area" id="canvasArea">
+        <div class="canvas-shell" id="canvasShell" hidden>
+          <canvas id="preview"></canvas>
+        </div>
       </div>
+
+      <div class="zoom-pill" id="zoomPill" hidden>
+        <button type="button" id="btnZoomOut" title="缩小">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <span class="zp-val" id="zoomVal">100%</span>
+        <button type="button" id="btnZoomIn" title="放大">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <span class="zp-sep"></span>
+        <button type="button" id="btnZoom100" title="按原始像素显示">1:1</button>
+        <button type="button" id="btnZoomFit" title="适应窗口">适应</button>
+      </div>
+      <div class="batch-nav" id="batchNav" hidden>
+        <div class="bn-top">
+          <span class="bn-count" id="batchCounter">–</span>
+          <span class="bn-name" id="batchName"></span>
+          <button class="btn btn--compact" id="btnBatchReset" title="把这一张恢复为打开文件夹时的默认参数">恢复默认</button>
+          <button class="btn btn--compact" id="btnBatchExit">退出批量</button>
+        </div>
+        <button class="bn-arrow bn-prev" id="btnBatchPrev" aria-label="上一张">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M14 6l-6 6 6 6"/>
+          </svg>
+        </button>
+        <button class="bn-arrow bn-next" id="btnBatchNext" aria-label="下一张">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M10 6l6 6-6 6"/>
+          </svg>
+        </button>
+      </div>
+
       <div class="dropzone" id="dropzone">
         <div class="dz-inner">
           <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -543,6 +785,17 @@ input[type=color]::-webkit-color-swatch{border:0}
 
 <input type="file" id="fileInput" accept="image/*" hidden>
 <div class="toast" id="toast" hidden></div>
+
+<div class="modal-mask" id="confirmBox" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle"></h2>
+    <div id="confirmText"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="confirmCancel">取消</button>
+      <button type="button" class="btn btn--danger" id="confirmOk">确认覆盖</button>
+    </div>
+  </div>
+</div>
 
 <script src="bg-core.js"></script>
 <script src="app.js"></script>
