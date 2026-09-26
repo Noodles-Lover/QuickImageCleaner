@@ -22,6 +22,176 @@
   var IMAGE_EXT = /\.(png|jpe?g|jfif|webp|bmp|gif|avif)$/i;
 
   /* ================================================================== *
+   * I18N —— 界面文案（zh / en），语言偏好存 localStorage
+   * ================================================================== */
+
+  var LANG_KEY = 'qic.lang';
+  var LANG = (function () {
+    var saved = null;
+    try { saved = localStorage.getItem(LANG_KEY); } catch (e) { /* 隐私模式下不可用 */ }
+    if (saved === 'zh' || saved === 'en') return saved;
+    return /^zh/i.test(navigator.language || '') ? 'zh' : 'en';
+  })();
+
+  var I18N = {
+    zh: {
+      docTitle: 'QuickImageCleaner · 背景透明化与最小尺寸裁剪',
+      sub: '背景透明化 · 最小尺寸裁剪',
+      pasteT: '从剪贴板粘贴图片', paste: '粘贴', open: '打开图片',
+      gBg: '背景', gSep: '分离', gCrop: '裁剪', gBatch: '批量', gTips: '提示',
+      bgColor: '背景色', pickT: '从图上拾取', pick: '拾取', autoDetect: '自动检测背景色',
+      tolerance: '敏感度', softness: '边缘羽化',
+      softnessHint: '占敏感度区间的比例，产生半透明过渡带',
+      globalMode: '全图移除同色',
+      globalModeHint: '关闭时只移除与四边连通的区域，保护主体内部同色像素',
+      cropToContent: '裁剪到最小尺寸', margin: '外边距',
+      alphaThreshold: '判定阈值', alphaThresholdHint: 'alpha 高于该值的像素才计入包围盒',
+      pickFolder: '选择文件夹',
+      batchDirInfo: '仅处理文件夹第一层，忽略子文件夹与非图片',
+      batchChosen: '已选 {d} · {n} 张图片',
+      readOnly: ' · 只有读取权限，将逐个下载',
+      keepOriginal: '创建副本', overwrite: '原地覆盖',
+      hintCopy: '原图另存为 原名-original，处理结果占用原文件名（原名.png）',
+      hintOverwrite: '处理结果占用原文件名（原名.png），原图不保留且无法从本工具恢复',
+      start: '开始处理', stop: '停止',
+      tip1: '背景为纯色或近似纯色时效果最佳',
+      tip2: '主体内部有与背景同色的区域时，保持「全图移除同色」关闭',
+      tip3: '导出始终按原始分辨率重新计算',
+      showOriginalT: '绕过处理，直接显示输入', showOriginal: '显示原图',
+      previewQuality: '预览精度',
+      qualityFast: '快速（降采样至 1100px）', qualityPrecise: '精确（原分辨率）',
+      exportCut: '导出 PNG（裁剪后）', exportFull: '导出 PNG（原尺寸）',
+      zoomOutT: '缩小', zoomInT: '放大', zoom100T: '按原始像素显示',
+      zoomFitT: '适应窗口', zoomFit: '适应',
+      resetT: '把这一张恢复为打开文件夹时的默认参数', reset: '恢复默认',
+      exitBatch: '退出批量', prev: '上一张', next: '下一张', inc: '增加', dec: '减少',
+      dzTitle: '拖入图片', dzSub: '或点击选择文件 · PNG / JPG / WebP / BMP / GIF',
+      dzPaste: '粘贴', dzSolid: '纯色背景效果最佳', dzLocal: '全程本地处理，不上传',
+      stSource: '原尺寸', stBg: '背景色', stOut: '输出尺寸', stTime: '处理耗时', stRemoved: '已移除',
+      notDetected: '未识别', emptyFlag: '整图判为背景', cancel: '取消', unknown: '未知错误',
+      errDecode: '图片解码失败', errSize: '无法读取图片尺寸',
+      errSide: '单边尺寸超过 {n}px 上限',
+      errPixels: '图片过大（{n} 像素），上限 {max}',
+      errPixelsRead: '无法读取像素数据：{m}',
+      errNotImage: '不是图片文件：{n}', errLoad: '图片载入失败',
+      errClipboard: '当前环境不支持读取剪贴板，请直接按 Ctrl+V',
+      errClipboardFail: '读取剪贴板失败，请直接按 Ctrl+V',
+      clipboardEmpty: '剪贴板中没有图片',
+      errDetect: '背景检测失败：{m}',
+      detectNone: '未识别到背景色（整图可能已透明），已保留当前设定',
+      errFolder: '选择文件夹失败：{m}',
+      noFsApi: '当前浏览器不支持文件夹写入，请使用 Chrome 或 Edge',
+      noImages: '文件夹内没有可处理的图片',
+      errItem: '载入 {n} 失败：{m}', errProcess: '处理失败：{m}', errExport: '导出失败：{m}',
+      exported: '已导出 {n}（{w}×{h}）', errPng: 'PNG 编码失败',
+      batchChip: '批量 · {d} · {n} 张',
+      batchDone: '批量完成 {d} / {t}', batchFail: '，失败 {f}', batchStopped: '已手动停止',
+      cfTitle: '确认原地覆盖',
+      cfLine1: '将处理 {n} 张图片，并写回文件夹「{d}」。',
+      cfLine2: '处理结果占用原文件名（原名.png），全部原图都将被改写或删除。',
+      cfLine3: '如需保留原图，请改用「创建副本」。',
+      cfWarn: '覆盖后原图无法从本工具恢复：操作不可撤销，请先备份重要图片。',
+      cfOk: '确认覆盖', ok: '确认', done: '完成', errCtx: '无法创建 2D 上下文'
+    },
+    en: {
+      docTitle: 'QuickImageCleaner · Transparent background & auto crop',
+      sub: 'Background removal · Auto crop',
+      pasteT: 'Paste from clipboard', paste: 'Paste', open: 'Open image',
+      gBg: 'Background', gSep: 'Separate', gCrop: 'Crop', gBatch: 'Batch', gTips: 'Tips',
+      bgColor: 'Background color', pickT: 'Pick a color from the image', pick: 'Pick',
+      autoDetect: 'Auto-detect background',
+      tolerance: 'Tolerance', softness: 'Edge feathering',
+      softnessHint: 'Share of the tolerance range that becomes a soft transition',
+      globalMode: 'Remove matching color everywhere',
+      globalModeHint: 'Off: only regions connected to the borders are cleared, protecting same-colored areas inside the subject',
+      cropToContent: 'Crop to content', margin: 'Margin',
+      alphaThreshold: 'Alpha threshold', alphaThresholdHint: 'Pixels with alpha above this count toward the crop box',
+      pickFolder: 'Choose folder',
+      batchDirInfo: 'Only the top level is processed; subfolders and non-images are skipped',
+      batchChosen: 'Selected {d} · {n} images',
+      readOnly: ' · read-only, files will be downloaded instead',
+      keepOriginal: 'Keep original', overwrite: 'Overwrite',
+      hintCopy: 'Originals are kept as name-original; results take the original file names (name.png)',
+      hintOverwrite: 'Results take the original file names (name.png); originals are not kept and cannot be restored by this tool',
+      start: 'Start', stop: 'Stop',
+      tip1: 'Works best on solid or near-solid backgrounds',
+      tip2: 'Keep "remove matching color everywhere" off if the subject contains the background color',
+      tip3: 'Export always re-runs at full resolution',
+      showOriginalT: 'Show the input without processing', showOriginal: 'Original',
+      previewQuality: 'Preview quality',
+      qualityFast: 'Fast (downscaled to 1100 px)', qualityPrecise: 'Precise (full resolution)',
+      exportCut: 'Export PNG (cropped)', exportFull: 'Export PNG (full size)',
+      zoomOutT: 'Zoom out', zoomInT: 'Zoom in', zoom100T: 'Actual pixels',
+      zoomFitT: 'Fit to window', zoomFit: 'Fit',
+      resetT: 'Reset this image to the defaults from when the folder was opened', reset: 'Reset',
+      exitBatch: 'Exit batch', prev: 'Previous', next: 'Next', inc: 'Increase', dec: 'Decrease',
+      dzTitle: 'Drop an image', dzSub: 'or click to browse · PNG / JPG / WebP / BMP / GIF',
+      dzPaste: 'to paste', dzSolid: 'Best with solid backgrounds', dzLocal: 'Processed locally, never uploaded',
+      stSource: 'Source', stBg: 'Background', stOut: 'Output', stTime: 'Time', stRemoved: 'Removed',
+      notDetected: 'Not detected', emptyFlag: 'Whole image is background', cancel: 'Cancel', unknown: 'Unknown error',
+      errDecode: 'Failed to decode the image', errSize: 'Could not read the image size',
+      errSide: 'A side exceeds the {n}px limit',
+      errPixels: 'Image too large ({n} pixels), limit is {max}',
+      errPixelsRead: 'Could not read pixel data: {m}',
+      errNotImage: 'Not an image file: {n}', errLoad: 'Failed to load the image',
+      errClipboard: 'Clipboard reading is not supported here, press Ctrl+V instead',
+      errClipboardFail: 'Failed to read the clipboard, press Ctrl+V instead',
+      clipboardEmpty: 'No image in the clipboard',
+      errDetect: 'Background detection failed: {m}',
+      detectNone: 'No background color detected (the image may be fully transparent); current setting kept',
+      errFolder: 'Could not open the folder: {m}',
+      noFsApi: 'This browser cannot write to folders, use Chrome or Edge',
+      noImages: 'No processable images in this folder',
+      errItem: 'Failed to load {n}: {m}', errProcess: 'Processing failed: {m}', errExport: 'Export failed: {m}',
+      exported: 'Exported {n} ({w}×{h})', errPng: 'PNG encoding failed',
+      batchChip: 'Batch · {d} · {n} images',
+      batchDone: 'Done {d} / {t}', batchFail: ', {f} failed', batchStopped: 'Stopped manually',
+      cfTitle: 'Confirm overwrite',
+      cfLine1: 'Will process {n} images and write them back to "{d}".',
+      cfLine2: 'Results take the original file names (name.png); every original will be overwritten or deleted.',
+      cfLine3: 'To keep originals, use "Keep original" instead.',
+      cfWarn: 'Overwritten originals cannot be restored by this tool: the operation is irreversible. Back up important images first.',
+      cfOk: 'Overwrite', ok: 'OK', done: 'Done', errCtx: 'Could not create a 2D context'
+    }
+  };
+
+  function t(key, vars) {
+    var table = I18N[LANG] || I18N.zh;
+    var s = table[key] !== undefined ? table[key] : I18N.zh[key];
+    if (s === undefined) return key;
+    if (vars) {
+      for (var k in vars) {
+        if (Object.prototype.hasOwnProperty.call(vars, k)) {
+          s = s.split('{' + k + '}').join(String(vars[k]));
+        }
+      }
+    }
+    return s;
+  }
+
+  function applyI18n() {
+    document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+    document.title = t('docTitle');
+    var i, nodes;
+    nodes = document.querySelectorAll('[data-i18n]');
+    for (i = 0; i < nodes.length; i++) {
+      nodes[i].textContent = t(nodes[i].getAttribute('data-i18n'));
+    }
+    nodes = document.querySelectorAll('[data-i18n-title]');
+    for (i = 0; i < nodes.length; i++) {
+      nodes[i].setAttribute('title', t(nodes[i].getAttribute('data-i18n-title')));
+    }
+    nodes = document.querySelectorAll('[data-i18n-aria]');
+    for (i = 0; i < nodes.length; i++) {
+      nodes[i].setAttribute('aria-label', t(nodes[i].getAttribute('data-i18n-aria')));
+    }
+    nodes = document.querySelectorAll('#langSwitch button');
+    for (i = 0; i < nodes.length; i++) {
+      nodes[i].classList.toggle('is-active', nodes[i].getAttribute('data-lang') === LANG);
+    }
+  }
+
+  /* ================================================================== *
    * 工具
    * ================================================================== */
 
@@ -163,7 +333,7 @@
         warn.textContent = o.warn;
         this.textEl.appendChild(warn);
       }
-      this.okEl.textContent = o.okText || '确认';
+      this.okEl.textContent = o.okText || t('ok');
       this.box.hidden = false;
       return new Promise(function (resolve) { self._resolve = resolve; });
     }
@@ -194,19 +364,19 @@
       var raw = await SourceImage.decode(file);
       var w = raw.width || raw.naturalWidth || 0;
       var h = raw.height || raw.naturalHeight || 0;
-      if (!w || !h) throw new Error('无法读取图片尺寸');
+      if (!w || !h) throw new Error(t('errSize'));
       if (w > BGCore.MAX_SIDE || h > BGCore.MAX_SIDE) {
-        throw new Error('单边尺寸超过 ' + BGCore.MAX_SIDE + 'px 上限');
+        throw new Error(t('errSide', { n: BGCore.MAX_SIDE }));
       }
       if (w * h > BGCore.MAX_PIXELS) {
-        throw new Error('图片过大（' + group(w * h) + ' 像素），上限 ' + group(BGCore.MAX_PIXELS));
+        throw new Error(t('errPixels', { n: group(w * h), max: group(BGCore.MAX_PIXELS) }));
       }
       try {
         var raster = SourceImage.rasterize(raw, w, h);
         if (typeof raw.close === 'function') raw.close();
         return new SourceImage(file.name, raster.imageData, raster.canvas);
       } catch (e) {
-        throw new Error('无法读取像素数据：' + (e && e.message ? e.message : '未知错误'));
+        throw new Error(t('errPixelsRead', { m: e && e.message ? e.message : t('unknown') }));
       }
     }
 
@@ -218,7 +388,7 @@
         var url = URL.createObjectURL(file);
         var img = new Image();
         img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
-        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('图片解码失败')); };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error(t('errDecode'))); };
         img.src = url;
       });
     }
@@ -228,7 +398,7 @@
       canvas.width = w;
       canvas.height = h;
       var ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) throw new Error('无法创建 2D 上下文');
+      if (!ctx) throw new Error(t('errCtx'));
       ctx.drawImage(source, 0, 0, w, h);
       return { imageData: ctx.getImageData(0, 0, w, h), canvas: canvas };
     }
@@ -546,13 +716,13 @@
         this.el.bg.textContent = rgbToHex(s.bg);
         this.el.swatch.style.background = rgbToHex(s.bg);
       } else {
-        this.el.bg.textContent = '未识别';
+        this.el.bg.textContent = t('notDetected');
         this.el.swatch.style.background = 'transparent';
       }
       this.el.out.textContent = s.outW + ' × ' + s.outH;
       this.el.time.textContent = s.ms < 1 ? '<1 ms' : Math.round(s.ms) + ' ms';
       this.el.removed.textContent = group(s.removed);
-      this._flag(s.empty ? '整图判为背景' : null);
+      this._flag(s.empty ? t('emptyFlag') : null);
     }
 
     _flag(text) {
@@ -581,7 +751,7 @@
 
       return await new Promise(function (resolve, reject) {
         canvas.toBlob(function (b) {
-          b ? resolve(b) : reject(new Error('PNG 编码失败'));
+          b ? resolve(b) : reject(new Error(t('errPng')));
         }, 'image/png');
       });
     }
@@ -669,7 +839,31 @@
       // 预览缩放：1 = 适应窗口，>1 放大，<1 缩小
       this.zoom = 1;
 
+      applyI18n();
       this._bindShell();
+    }
+
+    /** 切换语言：静态文案重刷 + 动态文案（提示/状态/按钮）重算 */
+    setLang(lang) {
+      if (lang !== 'zh' && lang !== 'en') return;
+      LANG = lang;
+      try { localStorage.setItem(LANG_KEY, LANG); } catch (e) { /* 隐私模式下不可用 */ }
+      applyI18n();
+      this._syncBatchHint();
+      this._refreshLangTexts();
+    }
+
+    _refreshLangTexts() {
+      if (this.batch) {
+        $('batchDirInfo').textContent = t('batchChosen',
+          { d: this.batch.dir.name, n: this.batch.items.length }) +
+          (this.batch.writable ? '' : t('readOnly'));
+      }
+      if (this._activeSource()) {
+        this.renderNow();
+      } else {
+        this.status.reset();
+      }
     }
 
     /* ---------- 外壳事件 ---------- */
@@ -687,14 +881,19 @@
 
       $('dropzone').addEventListener('click', function () { $('fileInput').click(); });
 
-      ['dragenter', 'dragover'].forEach(function (t) {
-        viewport.addEventListener(t, function (e) {
+      // 语言切换
+      Array.prototype.forEach.call(document.querySelectorAll('#langSwitch button'), function (btn) {
+        btn.addEventListener('click', function () { self.setLang(btn.getAttribute('data-lang')); });
+      });
+
+      ['dragenter', 'dragover'].forEach(function (type) {
+        viewport.addEventListener(type, function (e) {
           e.preventDefault();
           viewport.classList.add('is-dragover');
         });
       });
-      ['dragleave', 'dragend'].forEach(function (t) {
-        viewport.addEventListener(t, function () { viewport.classList.remove('is-dragover'); });
+      ['dragleave', 'dragend'].forEach(function (type) {
+        viewport.addEventListener(type, function () { viewport.classList.remove('is-dragover'); });
       });
       viewport.addEventListener('drop', function (e) {
         e.preventDefault();
@@ -772,20 +971,20 @@
       if (this._busy) return;   // 批量/导出进行中不接受新图，所有载入入口都经过这里
       if (this.mode === 'batch') this._exitBatch();
       if (!/^image\//i.test(file.type) && !IMAGE_EXT.test(file.name || '')) {
-        this.notifier.show('不是图片文件：' + (file.name || '未知'));
+        this.notifier.show(t('errNotImage', { n: file.name || t('unknown') }));
         return;
       }
       try {
         var src = await SourceImage.load(file);
         this.setSource(src);
       } catch (e) {
-        this.notifier.show(e && e.message ? e.message : '图片载入失败');
+        this.notifier.show(e && e.message ? e.message : t('errLoad'));
       }
     }
 
     async pasteFromClipboard() {
       if (!navigator.clipboard || !navigator.clipboard.read) {
-        this.notifier.show('当前环境不支持读取剪贴板，请直接按 Ctrl+V');
+        this.notifier.show(t('errClipboard'));
         return;
       }
       try {
@@ -800,9 +999,9 @@
             return;
           }
         }
-        this.notifier.show('剪贴板中没有图片');
+        this.notifier.show(t('clipboardEmpty'));
       } catch (e) {
-        this.notifier.show('读取剪贴板失败，请直接按 Ctrl+V');
+        this.notifier.show(t('errClipboardFail'));
       }
     }
 
@@ -836,11 +1035,11 @@
       try {
         bg = BGCore.estimateBackground(src.imageData.data, src.width, src.height, 2);
       } catch (e) {
-        this.notifier.show('背景检测失败：' + (e && e.message ? e.message : '未知错误'));
+        this.notifier.show(t('errDetect', { m: e && e.message ? e.message : t('unknown') }));
         return;
       }
       if (!bg) {
-        this.notifier.show('未识别到背景色（整图可能已透明），已保留当前设定');
+        this.notifier.show(t('detectNone'));
         return;
       }
       this.panel.setBgColor(bg);
@@ -889,7 +1088,7 @@
       try {
         result = BGCore.process(work.imageData, params);
       } catch (e) {
-        this.notifier.show('处理失败：' + (e && e.message ? e.message : '未知错误'));
+        this.notifier.show(t('errProcess', { m: e && e.message ? e.message : t('unknown') }));
         return;
       }
       var ms = performance.now() - t0;
@@ -959,9 +1158,9 @@
 
         var name = derivedName(this.source.name, cropOn);
         await Exporter.download(out.pixels, out.w, out.h, name);
-        this.notifier.show('已导出 ' + name + '（' + out.w + '×' + out.h + '）', 2600);
+        this.notifier.show(t('exported', { n: name, w: out.w, h: out.h }), 2600);
       } catch (e) {
-        this.notifier.show('导出失败：' + (e && e.message ? e.message : '未知错误'));
+        this.notifier.show(t('errExport', { m: e && e.message ? e.message : t('unknown') }));
       } finally {
         this._setBusy(false);
       }
@@ -971,9 +1170,7 @@
 
     _syncBatchHint() {
       var overwrite = $('batchMode').querySelector('input:checked').value === 'overwrite';
-      $('batchHint').textContent = overwrite
-        ? '处理结果占用原文件名（原名.png），原图不保留且无法从本工具恢复'
-        : '原图另存为 原名-original，处理结果占用原文件名（原名.png）';
+      $('batchHint').textContent = t(overwrite ? 'hintOverwrite' : 'hintCopy');
     }
 
     /* ---------- 缩放（仅显示尺寸，不参与处理） ---------- */
@@ -1088,7 +1285,7 @@
     async pickBatchFolder() {
       if (this._busy) return;
       if (!Batch.supported()) {
-        this.notifier.show('当前浏览器不支持文件夹写入，请使用 Chrome 或 Edge');
+        this.notifier.show(t('noFsApi'));
         return;
       }
       try {
@@ -1097,7 +1294,7 @@
         var writable = await Batch.ensureWritePermission(dir);
         var handles = await Batch.listImages(dir);
         if (!handles.length) {
-          this.notifier.show('文件夹内没有可处理的图片');
+          this.notifier.show(t('noImages'));
           return;
         }
 
@@ -1113,12 +1310,12 @@
           index: -1
         };
 
-        $('batchDirInfo').textContent = '已选 ' + dir.name + ' · ' + handles.length + ' 张图片' +
-          (writable ? '' : ' · 只有读取权限，将逐个下载');
+        $('batchDirInfo').textContent = t('batchChosen', { d: dir.name, n: handles.length }) +
+          (writable ? '' : t('readOnly'));
         this._enterBatch();
       } catch (e) {
         if (e && e.name === 'AbortError') return; // 用户取消
-        this.notifier.show('选择文件夹失败：' + (e && e.message ? e.message : '未知错误'));
+        this.notifier.show(t('errFolder', { m: e && e.message ? e.message : t('unknown') }));
       }
     }
 
@@ -1148,7 +1345,8 @@
       if (on) {
         $('dropzone').hidden = true;
         $('canvasShell').hidden = false;
-        $('fileChip').textContent = '批量 · ' + this.batch.dir.name + ' · ' + this.batch.items.length + ' 张';
+        $('fileChip').textContent = t('batchChip',
+          { d: this.batch.dir.name, n: this.batch.items.length });
         $('fileChip').hidden = false;
       } else if (!this.source) {
         $('dropzone').hidden = false;
@@ -1156,6 +1354,7 @@
         $('fileChip').hidden = true;
         $('btnBatchRun').disabled = true;
       }
+      $('btnBatchRun').textContent = (this._busy && this.mode === 'batch') ? t('stop') : t('start');
     }
 
     /** 切换到某一张：解码 → 未检测过背景色则检测 → 把该张参数装进面板 → 绘制 */
@@ -1175,7 +1374,7 @@
         try {
           item.source = await SourceImage.load(await item.handle.getFile());
         } catch (e) {
-          this.notifier.show('载入 ' + item.name + ' 失败：' + (e && e.message ? e.message : '未知错误'));
+          this.notifier.show(t('errItem', { n: item.name, m: e && e.message ? e.message : t('unknown') }));
         }
       }
       if (this.mode !== 'batch' || b.index !== i) return;   // 期间已切走
@@ -1226,14 +1425,14 @@
 
       if (overwrite) {
         var ok = await this.confirm.ask({
-          title: '确认原地覆盖',
+          title: t('cfTitle'),
           lines: [
-            '将处理 ' + items.length + ' 张图片，并写回文件夹「' + this.batch.dir.name + '」。',
-            '处理结果占用原文件名（原名.png），全部原图都将被改写或删除。',
-            '如需保留原图，请改用「创建副本」。'
+            t('cfLine1', { n: items.length, d: this.batch.dir.name }),
+            t('cfLine2'),
+            t('cfLine3')
           ],
-          warn: '覆盖后原图无法从本工具恢复：操作不可撤销，请先备份重要图片。',
-          okText: '确认覆盖'
+          warn: t('cfWarn'),
+          okText: t('cfOk')
         });
         if (!ok) return;
       }
@@ -1241,14 +1440,14 @@
       this._batchAbort = false;
       this._setBusy(true);
       $('btnPickDir').disabled = true;
-      $('btnBatchRun').textContent = '停止';
+      $('btnBatchRun').textContent = t('stop');
       $('batchProgress').hidden = false;
 
       var done = 0, fail = 0, notes = [];
       var self = this;
 
       for (var i = 0; i < items.length; i++) {
-        if (this._batchAbort) { notes.push('已手动停止'); break; }
+        if (this._batchAbort) { notes.push(t('batchStopped')); break; }
         var item = items[i];
         self._paintBatchProgress(i, items.length, item.name);
         try {
@@ -1263,19 +1462,21 @@
           done++;
         } catch (e) {
           fail++;
-          if (notes.length < 3) notes.push(item.name + '：' + (e && e.message ? e.message : '未知错误'));
+          if (notes.length < 3) {
+            notes.push(t('errItem', { n: item.name, m: e && e.message ? e.message : t('unknown') }));
+          }
         }
       }
 
-      this._paintBatchProgress(items.length, items.length, '完成');
-      $('btnBatchRun').textContent = '开始处理';
+      this._paintBatchProgress(items.length, items.length, t('done'));
+      $('btnBatchRun').textContent = t('start');
       $('btnPickDir').disabled = false;
       this._setBusy(false);
       this.renderNow();
 
-      var msg = '批量完成 ' + done + ' / ' + items.length;
-      if (fail) msg += '，失败 ' + fail;
-      if (notes.length) msg += ' · ' + notes.join('；');
+      var msg = t('batchDone', { d: done, t: items.length });
+      if (fail) msg += t('batchFail', { f: fail });
+      if (notes.length) msg += ' · ' + notes.join(' / ');
       this.notifier.show(msg, notes.length ? 7000 : 3200);
     }
 
